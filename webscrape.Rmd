@@ -1,0 +1,109 @@
+---
+title: "webScrapperInR"
+author: "Jay Gohner"
+date: "October 29, 2019"
+output: html_document
+---
+
+This will be a walkthrough and demonstration for a web scrapper using R. First we will load in the necessary libraries and
+we will use the suppressMessages functions to keep the noise down!
+
+We will begin with the in class example and build a templated function from that code that can then be used on other url's 
+linking to CSUC schedule pages.
+
+We create a variable called myurl and store the Spring 2019 schedule's url.
+Then using an rvest function called read_html we can read in the html linked to by the url.
+```{r}
+suppressMessages(library("tidyr"))
+suppressMessages(library("rvest"))
+
+myurl <- "http://ems.csuchico.edu/APSS/schedule/spr2019/CSCI.shtml"
+spring2019_html <- read_html(myurl)
+
+```
+We build a function for each column we want to scrape and place in our newly created tibble.
+This is accomplished using the function html_nodes to read in the specific node from the html and then we flatten the node
+using html_text. In cases where necessary we use also use as.integer(). This is all strung together using R's piping method.
+```{r}
+
+subject <- spring2019_html %>% html_nodes("td.subj") %>% html_text()
+
+class_num <- spring2019_html %>% 
+                    html_nodes("td.cat_num") %>% 
+                    html_text()
+
+section <- spring2019_html %>% 
+              html_nodes("td.sect") %>% 
+              html_text() %>% 
+              as.integer()
+
+title <- spring2019_html %>% 
+          html_nodes("td.title") %>% 
+          html_text()
+
+instructor <- spring2019_html %>%
+                    html_nodes("td.Instructor") %>%
+                    html_text
+
+spring2019_print <- tibble(subjects = subject, class_nums = class_num, sections = section, titles = title, instructors = instructor)
+```
+
+Now that we know the above code does in fact scrape the information from the nodes that we want, we can restructure it to
+accomadate any provided url.
+```{r}
+read_class_schedule <- function(the_url) {
+  html_to_read <- read_html(the_url)
+  
+  subject <- html_to_read %>% html_nodes("td.subj") %>% html_text()
+
+  class_num <- html_to_read %>% 
+                    html_nodes("td.cat_num") %>% 
+                    html_text()
+
+  section <- html_to_read %>% 
+              html_nodes("td.sect") %>% 
+              html_text() %>% 
+              as.integer()
+
+  title <- html_to_read %>% 
+          html_nodes("td.title") %>% 
+          html_text()
+
+  instructor <- html_to_read %>%
+                    html_nodes("td.Instructor") %>%
+                    html_text
+
+sched_print <- tibble(subjects = subject, class_nums = class_num, sections = section, titles = title, instructors = instructor)
+}
+```
+
+And as a demonstration we then scrape and print the four provided urls.
+```{r}
+csci_spring_2019_url <- "http://ems.csuchico.edu/APSS/schedule/spr2019/CSCI.shtml"
+read_class_schedule(csci_spring_2019_url)
+
+csci_spring_2020_url <- "http://ems.csuchico.edu/APSS/schedule/spr2020/CSCI.shtml"
+read_class_schedule(csci_spring_2020_url)
+
+math_spring_2019_url <- "http://ems.csuchico.edu/APSS/schedule/spr2019/MATH.shtml"
+read_class_schedule(math_spring_2019_url)
+
+math_spring_2020_url <- "http://ems.csuchico.edu/APSS/schedule/spr2020/MATH.shtml"
+read_class_schedule(math_spring_2020_url)
+```
+Next, refactor your code so you can use it for each of the schedule links provided. Create a function called read_class_schedule with a parameter called url that receives the location of the schedule, completes the actions from step 1, and returns the tibble
+Create a code chunk that calls your function for each of the schedules, and combines them all into a single tibble. Document all this work in your .Rmd so that you can refer back to it as a reference.
+Go to GitHub and create a New Repository called "Scraping-Schedules" Copy the URL and then in R Studio's Terminal type the following commands:
+git init
+git add *.Rmd
+git commit -m "Scrapes CSCI and MATH schedules into tibbles"
+git remote add origin https:// <-- paste your GitHub repo URL here
+git push origin master
+Confirm that your work is now on GitHub. Submit your URL as your assignment for x06 on Blackboard.
+
+
+
+
+
+
+
