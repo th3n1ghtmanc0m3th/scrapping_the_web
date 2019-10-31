@@ -14,96 +14,119 @@ linking to CSUC schedule pages.
 We create a variable called myurl and store the Spring 2019 schedule's url.
 Then using an rvest function called read_html we can read in the html linked to by the url.
 ```{r}
-suppressMessages(library("tidyr"))
+suppressMessages(library("tidyverse"))
 suppressMessages(library("rvest"))
 
 myurl <- "http://ems.csuchico.edu/APSS/schedule/spr2019/CSCI.shtml"
 spring2019_html <- read_html(myurl)
 
 ```
+
 We build a function for each column we want to scrape and place in our newly created tibble.
 This is accomplished using the function html_nodes to read in the specific node from the html and then we flatten the node
 using html_text. In cases where necessary we use also use as.integer(). This is all strung together using R's piping method.
 ```{r}
+spring2019 <- spring2019_html %>% 
+                html_nodes("tr")
 
-subject <- spring2019_html %>% html_nodes("td.subj") %>% html_text()
+subject <- spring2019 %>% 
+                html_nodes("td.subj") %>% 
+                html_text()
 
-class_num <- spring2019_html %>% 
+class_num <- spring2019 %>% 
                     html_nodes("td.cat_num") %>% 
                     html_text()
 
-section <- spring2019_html %>% 
+section <- spring2019 %>% 
               html_nodes("td.sect") %>% 
               html_text() %>% 
               as.integer()
 
-title <- spring2019_html %>% 
+title <- spring2019 %>% 
           html_nodes("td.title") %>% 
           html_text()
 
-instructor <- spring2019_html %>%
-                    html_nodes("td.Instructor") %>%
-                    html_text
+unit <- spring2019 %>% 
+            html_nodes("td.units") %>%
+            html_text() %>%
+            as.integer()
 
-spring2019_print <- tibble(subjects = subject, class_nums = class_num, sections = section, titles = title, instructors = instructor)
+instructor <- spring2019 %>%
+                html_nodes("td.Instructor") %>%
+                html_text
+
+capacity <- spring2019 %>%
+                html_nodes("td.seatsavail") %>%
+                html_text() %>%
+                as.integer()
+
+spring2019_print <- tibble(subjects = subject, class_nums = class_num, sections = section, units = unit, titles = title, instructors = instructor, enrollment = capacity)
 ```
 
-Now that we know the above code does in fact scrape the information from the nodes that we want, we can restructure it to
-accomadate any provided url.
+Now that we know the above code does in fact scrape the information from the nodes that we want, we can refactor it to
+accommodate any provided url.
 ```{r}
 read_class_schedule <- function(the_url) {
-  html_to_read <- read_html(the_url)
+  schedule <- read_html(the_url) %>% 
+                html_nodes("tr")
   
-  subject <- html_to_read %>% html_nodes("td.subj") %>% html_text()
+  subject <- schedule %>% 
+                html_nodes("td.subj") %>%
+                html_text()
 
-  class_num <- html_to_read %>% 
-                    html_nodes("td.cat_num") %>% 
-                    html_text()
+  class_num <- schedule %>% 
+                  html_nodes("td.cat_num") %>% 
+                  html_text()
 
-  section <- html_to_read %>% 
-              html_nodes("td.sect") %>% 
-              html_text() %>% 
-              as.integer()
+  section <- schedule %>% 
+                html_nodes("td.sect") %>% 
+                html_text() %>% 
+                as.integer()
 
-  title <- html_to_read %>% 
-          html_nodes("td.title") %>% 
-          html_text()
+  title <- schedule %>% 
+              html_nodes("td.title") %>% 
+              html_text()
+  
+  unit <- schedule %>% 
+            html_nodes("td.units") %>%
+            html_text() %>%
+            as.integer()
 
-  instructor <- html_to_read %>%
+  instructor <- schedule %>%
                     html_nodes("td.Instructor") %>%
                     html_text
+  
+  capacity <- schedule %>%
+                html_nodes("td.seatsavail") %>%
+                html_text() %>%
+                as.integer()
+  
+  ##semester_year <- read_html(myurl) %>% 
+    ##            html_nodes("#bd > div > div > h1") %>%
+    ##            html_text()
+  ##reg_pattern <- "(Fall|Spring)\ (\\d+)"
+  
+  ##temp <- stringr::str_match_all(semester_year, reg_pattern)
+  
+  ##(temp)
+  
+  ##semester_year <- schedule
 
-sched_print <- tibble(subjects = subject, class_nums = class_num, sections = section, titles = title, instructors = instructor)
+sched_print <- tibble(subjects = subject, class_nums = class_num, sections = section, titles = title, units = unit, instructors = instructor, enrollment = capacity)
 }
 ```
 
-And as a demonstration we then scrape and print the four provided urls.
+And as a demonstration we then scrape and print the four provided urls into one tibble.
 ```{r}
-csci_spring_2019_url <- "http://ems.csuchico.edu/APSS/schedule/spr2019/CSCI.shtml"
-read_class_schedule(csci_spring_2019_url)
+csci_spring_2019 <- read_class_schedule("http://ems.csuchico.edu/APSS/schedule/spr2019/CSCI.shtml")
+csci_spring_2020 <- read_class_schedule("http://ems.csuchico.edu/APSS/schedule/spr2020/CSCI.shtml")
+math_spring_2019 <- read_class_schedule("http://ems.csuchico.edu/APSS/schedule/spr2019/MATH.shtml")
+math_spring_2020 <- read_class_schedule("http://ems.csuchico.edu/APSS/schedule/spr2020/MATH.shtml")
 
-csci_spring_2020_url <- "http://ems.csuchico.edu/APSS/schedule/spr2020/CSCI.shtml"
-read_class_schedule(csci_spring_2020_url)
-
-math_spring_2019_url <- "http://ems.csuchico.edu/APSS/schedule/spr2019/MATH.shtml"
-read_class_schedule(math_spring_2019_url)
-
-math_spring_2020_url <- "http://ems.csuchico.edu/APSS/schedule/spr2020/MATH.shtml"
-read_class_schedule(math_spring_2020_url)
+schedule_classes <- csci_spring_2019 %>%
+                      full_join(csci_spring_2020) %>%
+                      full_join(math_spring_2019) %>%
+                      full_join(math_spring_2020)
+                      
+(schedule_classes)
 ```
-Next, refactor your code so you can use it for each of the schedule links provided. Create a function called read_class_schedule with a parameter called url that receives the location of the schedule, completes the actions from step 1, and returns the tibble
-Create a code chunk that calls your function for each of the schedules, and combines them all into a single tibble. Document all this work in your .Rmd so that you can refer back to it as a reference.
-Go to GitHub and create a New Repository called "Scraping-Schedules" Copy the URL and then in R Studio's Terminal type the following commands:
-git init
-git add *.Rmd
-git commit -m "Scrapes CSCI and MATH schedules into tibbles"
-git remote add origin https:// <-- paste your GitHub repo URL here
-git push origin master
-Confirm that your work is now on GitHub. Submit your URL as your assignment for x06 on Blackboard.
-
-
-
-
-
-
-
